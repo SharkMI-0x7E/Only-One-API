@@ -1,0 +1,5 @@
+# 覆盖 default.yaml：生产环境
+gateway:
+  logging:
+    level: "info"
+    format: "json"

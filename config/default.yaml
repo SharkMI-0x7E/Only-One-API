@@ -1,0 +1,25 @@
+gateway:
+  listen: "0.0.0.0:8080"
+  request_timeout_ms: 60000
+  max_body_bytes: 52428800       # 50 MiB
+  shutdown_timeout_ms: 15000
+
+logging:
+  level: "info"
+  format: "pretty"
+
+upstream_allowlist:
+  hosts:
+    - "api.openai.com"
+    - "127.0.0.1"
+
+defaults:
+  rate_limit:
+    algorithm: "token_bucket"
+    rps: 10
+    burst: 20
+  breaker:
+    failure_threshold: 5
+    open_duration_ms: 30000
+
+upstreams: []

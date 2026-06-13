@@ -1,0 +1,40 @@
+upstreams:
+  - id: "openai-primary"
+    provider: "openai"
+    base_url: "${RGD_OPENAI_BASE_URL}"
+    api_key: "${RGD_OPENAI_API_KEY}"
+    load_balancer: "round_robin"
+    models:
+      - "gpt-4o"
+      - "gpt-4o-mini"
+      - "text-embedding-3-small"
+
+routes:
+  - name: "openai-chat"
+    match:
+      method: POST
+      path: "/v1/chat/completions"
+    upstream:
+      id: "openai-primary"
+    auth:
+      type: "bearer"
+    rate_limit:
+      algorithm: "token_bucket"
+      rps: 5
+      burst: 10
+
+  - name: "openai-embeddings"
+    match:
+      method: POST
+      path: "/v1/embeddings"
+    upstream:
+      id: "openai-primary"
+    auth:
+      type: "bearer"
+
+  - name: "openai-models"
+    match:
+      method: GET
+      path: "/v1/models"
+    upstream:
+      id: "openai-primary"

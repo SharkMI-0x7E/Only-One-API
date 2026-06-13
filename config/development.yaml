@@ -1,0 +1,5 @@
+# 覆盖 default.yaml：开发环境
+gateway:
+  logging:
+    level: "debug"
+    format: "pretty"
