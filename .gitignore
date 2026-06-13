@@ -23,6 +23,9 @@ target
 .idea/
 .vscode/
 
+# Trae IDE 本地数据（spec / 任务状态 / 缓存）
+.trae/
+
 # 本地临时
 *.log
 *.swp
