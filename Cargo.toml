@@ -1,9 +1,70 @@
 [package]
 name = "rapidgate"
-version = "0.1.2"
+# 注：cargo semver 不接受 minor 段前导零，spec AGENTS.md §6 写 "2026.06.1" 会在
+# `cargo check` 时报 "invalid leading zero"。这里用 2026.6.1 与 2026.6.x 系列等价。
+# 待阶段二与用户对齐后决定是否回填 AGENTS.md。
+version = "2026.6.1"
 edition = "2021"
 license = "Apache-2.0"
-description = "This crate is still empty (I'm learning Rust), yet 8 brave souls have already downloaded it — thanks for the encouragement! | A high-performance unified API gateway for multiple LLM providers"
+description = "High-performance unified LLM API gateway written in Rust"
 repository = "https://github.com/SharkMI-0x7E/RapidGate"
 
+[lib]
+name = "rapidgate"
+path = "src/lib.rs"
+
+[[bin]]
+name = "rapidgate"
+path = "src/main.rs"
+
 [dependencies]
+# 异步运行时（spec §3.1 锁定）
+tokio = { version = "1.42", features = ["rt", "rt-multi-thread", "macros", "time", "sync", "signal"] }
+
+# HTTP 框架（spec §3.1 锁定）
+axum = { version = "0.8", features = ["macros", "ws"] }
+
+# HTTP 客户端（spec §3.1 锁定，关闭默认 features 以避免 openssl 依赖）
+reqwest = { version = "0.12", features = ["json", "stream", "rustls-tls"], default-features = false }
+
+# 序列化（spec §3.1 锁定）
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+serde_yaml = "0.9"
+
+# 配置（spec §3.1 锁定）
+dotenvy = "0.15"
+
+# 日志（spec §3.1 锁定）
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+
+# 错误处理（spec §3.1 锁定）
+thiserror = "2.0"
+anyhow = "1.0"
+
+# 工具（spec §3.1 锁定）
+bytes = "1.10"
+http = "1.2"
+http-body-util = "0.1"
+uuid = { version = "1.12", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+async-trait = "0.1"
+arc-swap = "1.7"
+notify = "6.1"
+moka = { version = "0.12", features = ["future"] }
+sha2 = "0.10"
+subtle = "2.6"
+regex = "1.11"
+tower = { version = "0.5", features = ["util", "timeout", "limit"] }
+tower-http = { version = "0.6", features = ["trace", "request-id", "util"] }
+hyper = { version = "1.5", features = ["server", "client", "http1", "http2"] }
+hyper-util = { version = "0.1", features = ["server", "client", "tokio"] }
+futures = "0.3"
+futures-util = "0.3"
+
+[dev-dependencies]
+# 集成测试辅助
+tokio = { version = "1.42", features = ["macros", "rt", "rt-multi-thread"] }
+reqwest = { version = "0.12", features = ["json", "stream", "rustls-tls"], default-features = false }
+serde_json = "1.0"

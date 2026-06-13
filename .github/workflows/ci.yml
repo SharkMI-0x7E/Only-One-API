@@ -1,0 +1,111 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "**.md"
+      - "docs/**"
+      - ".trae/**"
+  pull_request:
+    branches: [main]
+    paths-ignore:
+      - "**.md"
+      - "docs/**"
+      - ".trae/**"
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions: {}
+
+jobs:
+  fmt:
+    name: Format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@a54c7afa936fefeb4456b2dd8068152619aa8d5b # stable
+        with:
+          components: rustfmt
+      - uses: Swatinem/rust-cache@23bce251a8cd2ffc3c1075eaa2367cf899916d84 # v2.7.7
+      - run: cargo fmt -- --check
+
+  version-check:
+    name: Version Format Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with: { persist-credentials: false }
+      - name: Validate Cargo.toml version format (YYYY.MM.N)
+        run: |
+          VERSION=$(grep '^version' Cargo.toml | head -1 | cut -d'"' -f2)
+          if [ -z "$VERSION" ]; then
+            echo "::error::Cannot extract version from Cargo.toml"
+            exit 1
+          fi
+          if ! echo "$VERSION" | grep -Eq '^[0-9]{4}\.(0[1-9]|1[0-2])\.[0-9]+$'; then
+            echo "::error::Invalid version format: '$VERSION'. Expected YYYY.MM.N (e.g. 2026.06.1)"
+            exit 1
+          fi
+          echo "PASS: version '$VERSION' matches YYYY.MM.N format"
+
+  lint-test:
+    name: Clippy & Test (${{ matrix.rust }} on ${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        rust: [stable, beta]
+        exclude:
+          - os: windows-latest
+            rust: beta
+          - os: macos-latest
+            rust: beta
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with: { persist-credentials: false }
+      - uses: dtolnay/rust-toolchain@a54c7afa936fefeb4456b2dd8068152619aa8d5b # stable
+        with:
+          toolchain: ${{ matrix.rust }}
+          components: clippy
+      - uses: Swatinem/rust-cache@23bce251a8cd2ffc3c1075eaa2367cf899916d84 # v2.7.7
+      - run: cargo clippy --all-targets --all-features -- -D warnings
+      - run: cargo build --all-targets --all-features
+      - run: cargo test --all-features
+
+  unsafe-check:
+    name: Unsafe Code Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with: { persist-credentials: false }
+      - name: Check for unsafe code
+        run: |
+          if grep -rn "unsafe" src/ --include="*.rs"; then
+            echo "::error::Found 'unsafe' keyword in src/ directory!"
+            exit 1
+          fi
+          echo "PASS: No unsafe code found in src/"
+
+  release-build:
+    name: Release Build
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with: { persist-credentials: false }
+      - uses: dtolnay/rust-toolchain@a54c7afa936fefeb4456b2dd8068152619aa8d5b # stable
+      - uses: Swatinem/rust-cache@23bce251a8cd2ffc3c1075eaa2367cf899916d84 # v2.7.7
+      - run: cargo build --release
