@@ -1,5 +1,7 @@
 # RapidGate
 
+[English](./README.md) | [中文](./README_cn.md)
+
 > A high-performance unified LLM API gateway written in Rust.
 > 高性能统一 LLM API 网关，Rust 实现。
 
@@ -8,7 +10,7 @@ Inspired by [songquanpeng/one-api](https://github.com/songquanpeng/one-api) — 
 
 ## Status
 
-- [x] **Stage 1 — Foundation** (commit `ba8b1c5`): 22 commits, 6/6 self-checks pass, 44/44 tests green
+- [x] **Stage 1 — Foundation** (commit `d9086df`): 23 commits, 6/6 self-checks pass, 44/44 tests green
 - [ ] **Stage 2 — Hardening**: real LLM providers, full SSRF defense, metrics, config hot reload
 - [ ] **Stage 3 — Scale-out**: multi-instance, distributed rate limit, observability stack
 
