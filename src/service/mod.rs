@@ -3,6 +3,7 @@
 pub mod config_loader;
 pub mod error;
 pub mod handler;
+pub mod hot_reload;
 pub mod middleware;
 pub mod server;
 pub mod state;
