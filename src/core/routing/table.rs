@@ -21,7 +21,17 @@ impl RouteTable {
     /// 从 routes 构造；同时编译所有 matcher
     pub fn new(routes: Vec<RouteConfig>) -> Result<Self, String> {
         let compiled = matcher::compile_all(&routes)?;
-        Ok(Self { routes, compiled })
+        // 按优先级排序：Exact(0) < Prefix(1) < Regex(2)
+        let mut sorted = compiled;
+        sorted.sort_by_key(|(m, _)| match m {
+            Matcher::Exact { .. } => 0,
+            Matcher::Prefix { .. } => 1,
+            Matcher::Regex { .. } => 2,
+        });
+        Ok(Self {
+            routes,
+            compiled: sorted,
+        })
     }
 
     pub fn empty() -> Self {

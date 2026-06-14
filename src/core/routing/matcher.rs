@@ -83,6 +83,7 @@ impl Matcher {
         }
     }
 
+    #[inline]
     pub fn method(&self) -> &str {
         match self {
             Matcher::Exact { method, .. }
@@ -134,6 +135,7 @@ fn query_matches(want: &[QueryMatch], have: &[(String, String)]) -> bool {
 }
 
 /// 按注册顺序找出第一条匹配；返回 (index, &RouteConfig)
+#[inline]
 pub fn first_match<'a>(
     routes: &'a [RouteConfig],
     compiled: &[(Matcher, usize)],
