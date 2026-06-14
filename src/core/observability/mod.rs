@@ -4,4 +4,4 @@
 
 pub mod trace;
 
-pub use trace::TraceId;
+pub use trace::{TraceContext, TraceId};

@@ -45,6 +45,76 @@ impl std::fmt::Display for TraceId {
     }
 }
 
+/// W3C tracecontext（spec §4.6）
+///
+/// 格式：`{version}-{trace-id}-{parent-id}-{flags}`
+/// 例：`00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01`
+#[derive(Debug, Clone)]
+pub struct TraceContext {
+    pub trace_id: String,
+    pub span_id: String,
+    pub flags: u8,
+}
+
+impl TraceContext {
+    /// 从 W3C traceparent header 解析
+    pub fn from_traceparent(value: &str) -> Option<Self> {
+        let parts: Vec<&str> = value.split('-').collect();
+        if parts.len() != 4 {
+            return None;
+        }
+        if parts[0] != "00" {
+            return None;
+        }
+        if parts[1].len() != 32 || !parts[1].chars().all(|c| c.is_ascii_hexdigit()) {
+            return None;
+        }
+        if parts[2].len() != 16 || !parts[2].chars().all(|c| c.is_ascii_hexdigit()) {
+            return None;
+        }
+        let flags = u8::from_str_radix(parts[3], 16).ok()?;
+        Some(Self {
+            trace_id: parts[1].to_string(),
+            span_id: parts[2].to_string(),
+            flags,
+        })
+    }
+
+    /// 生成新的 span id 并返回 traceparent 字符串
+    pub fn new_span(&self) -> (Self, String) {
+        let new_span = generate_span_id();
+        let child = Self {
+            trace_id: self.trace_id.clone(),
+            span_id: new_span.clone(),
+            flags: self.flags,
+        };
+        let parent = format!("00-{}-{}-{:02x}", self.trace_id, new_span, self.flags);
+        (child, parent)
+    }
+
+    /// 生成全新的 tracecontext（无上游传播时）
+    pub fn new_root() -> (Self, String) {
+        let trace_id = TraceId::new();
+        let span_id = generate_span_id();
+        let ctx = Self {
+            trace_id: trace_id.0.clone(),
+            span_id: span_id.clone(),
+            flags: 0x01,
+        };
+        let parent = format!("00-{}-{}-01", trace_id.0, span_id);
+        (ctx, parent)
+    }
+
+    pub fn to_traceparent(&self) -> String {
+        format!("00-{}-{}-{:02x}", self.trace_id, self.span_id, self.flags)
+    }
+}
+
+fn generate_span_id() -> String {
+    let u = uuid::Uuid::new_v4();
+    u.simple().to_string()[..16].to_string()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
