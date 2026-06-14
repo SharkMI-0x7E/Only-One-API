@@ -68,10 +68,13 @@ impl IntoResponse for ServiceError {
     fn into_response(self) -> Response {
         let status = self.status();
         let code = self.code();
+        // request_id 从 tracing span 获取（此处简化为空字符串）
+        let request_id = "";
         let body = json!({
             "error": {
                 "code": code,
                 "message": self.to_string(),
+                "request_id": request_id,
             }
         });
         (
