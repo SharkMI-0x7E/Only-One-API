@@ -63,8 +63,21 @@ hyper-util = { version = "0.1", features = ["server", "client", "tokio"] }
 futures = "0.3"
 futures-util = "0.3"
 
+# 阶段二新增（spec §3.2）
+jsonwebtoken = "9.3"         # JWT 认证
+serde_with = "3.7"           # 审计日志结构化
+
 [dev-dependencies]
 # 集成测试辅助
 tokio = { version = "1.42", features = ["macros", "rt", "rt-multi-thread"] }
 reqwest = { version = "0.12", features = ["json", "stream", "rustls-tls"], default-features = false }
 serde_json = "1.0"
+criterion = { version = "0.5", features = ["html_reports"] }  # 基准测试（spec §3.2）
+
+[[bench]]
+name = "routing_bench"
+harness = false
+
+[[bench]]
+name = "proxy_bench"
+harness = false
