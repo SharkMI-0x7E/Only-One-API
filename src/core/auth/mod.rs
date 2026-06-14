@@ -1,6 +1,7 @@
 //! core/auth — 认证抽象（spec §4.5）
 
 pub mod apikey;
+pub mod jwt;
 
 use async_trait::async_trait;
 
