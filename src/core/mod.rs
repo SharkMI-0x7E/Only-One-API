@@ -3,6 +3,7 @@
 //! 只做数据建模、trait 抽象、纯算法。所有跨进程共享状态、文件 I/O、
 //! HTTP 客户端调用均在 `service` 模块实现。
 
+pub mod audit;
 pub mod auth;
 pub mod breaker;
 pub mod config;

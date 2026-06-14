@@ -8,6 +8,7 @@ use std::sync::Arc;
 use moka::future::Cache;
 use tokio::sync::mpsc;
 
+use crate::core::audit::AuditEvent;
 use crate::core::config::route::RateLimitConfig;
 use crate::core::config::upstream::{UpstreamConfig, UpstreamId};
 use crate::core::routing::Router;
@@ -25,19 +26,6 @@ pub struct AppState {
     pub request_timeout_ms: u64,
     pub upstream_configs: Vec<UpstreamConfig>,
     pub default_rate_limit: RateLimitConfig,
-}
-
-/// 审计事件占位（阶段二 [S2+] 落地存储）
-#[derive(Debug, Clone)]
-pub struct AuditEvent {
-    pub trace_id: String,
-    pub user_id: Option<String>,
-    pub provider: String,
-    pub model: String,
-    pub prompt_tokens: u32,
-    pub completion_tokens: u32,
-    pub latency_ms: u64,
-    pub status: u16,
 }
 
 impl AppState {
