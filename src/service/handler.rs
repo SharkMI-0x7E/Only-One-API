@@ -74,15 +74,38 @@ pub async fn healthz() -> Response {
         .into_response()
 }
 
-/// GET /readyz — 就绪探针（检查配置有效性）
+/// GET /readyz — 就绪探针（检查配置有效性 + 上游可达性）
 pub async fn readyz(State(state): State<Arc<AppState>>) -> Result<Response, ServiceError> {
     if state.upstream_configs.is_empty() {
-        return Err(ServiceError::Core(CoreError::Config(
-            "no upstreams configured".into(),
-        )));
+        let body = json!({
+            "error": {
+                "code": "not_ready",
+                "message": "no upstreams configured",
+            }
+        });
+        return Ok((
+            StatusCode::SERVICE_UNAVAILABLE,
+            [(CONTENT_TYPE, "application/json")],
+            body.to_string(),
+        )
+            .into_response());
     }
     let route_count = state.route_table.snapshot().len();
-    let body = json!({"status": "ready", "routes": route_count});
+    if route_count == 0 {
+        let body = json!({
+            "error": {
+                "code": "not_ready",
+                "message": "no routes loaded",
+            }
+        });
+        return Ok((
+            StatusCode::SERVICE_UNAVAILABLE,
+            [(CONTENT_TYPE, "application/json")],
+            body.to_string(),
+        )
+            .into_response());
+    }
+    let body = json!({"status": "ready", "routes": route_count, "upstreams": state.upstream_configs.len()});
     Ok((
         StatusCode::OK,
         [(CONTENT_TYPE, "application/json")],
