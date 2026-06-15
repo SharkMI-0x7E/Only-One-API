@@ -1,0 +1,20 @@
+# Local Provider 配置
+# 阶段三新增（spec §2 [S3]）
+# 支持 Ollama / vLLM / LocalAI 等本地模型服务
+
+provider:
+  type: local
+  base_url: "${RGD_LOCAL_BASE_URL}"
+  api_key: "${RGD_LOCAL_API_KEY}"
+  model: "llama2"
+  timeout_ms: 120000
+  max_retries: 1
+
+# 支持的模型列表（根据实际部署的模型调整）
+models:
+  - name: "llama2"
+    max_tokens: 4096
+  - name: "codellama"
+    max_tokens: 4096
+  - name: "mistral"
+    max_tokens: 8192

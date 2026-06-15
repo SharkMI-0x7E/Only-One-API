@@ -1,0 +1,17 @@
+# Gemini Provider 配置
+# 阶段三新增（spec §2 [S3]）
+
+provider:
+  type: gemini
+  base_url: "${RGD_GEMINI_BASE_URL}"
+  api_key: "${RGD_GEMINI_API_KEY}"
+  model: "gemini-pro"
+  timeout_ms: 60000
+  max_retries: 3
+
+# 支持的模型列表
+models:
+  - name: "gemini-pro"
+    max_tokens: 32768
+  - name: "gemini-pro-vision"
+    max_tokens: 16384
