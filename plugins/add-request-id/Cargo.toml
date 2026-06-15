@@ -1,0 +1,14 @@
+[package]
+name = "rapidgate-plugin-add-request-id"
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+description = "RapidGate plugin: auto-inject request-id header"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+rapidgate = { path = "../.." }
+async-trait = "0.1"
+uuid = { version = "1.12", features = ["v4"] }

@@ -1,0 +1,15 @@
+[package]
+name = "rapidgate-plugin-cache-response"
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+description = "RapidGate plugin: cache responses for identical requests"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+rapidgate = { path = "../.." }
+async-trait = "0.1"
+moka = { version = "0.12", features = ["future"] }
+sha2 = "0.10"
