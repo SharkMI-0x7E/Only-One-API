@@ -5,6 +5,7 @@ pub mod error;
 pub mod handler;
 pub mod hot_reload;
 pub mod middleware;
+pub mod providers;
 pub mod server;
 pub mod state;
 pub mod telemetry;
