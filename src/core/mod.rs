@@ -9,6 +9,7 @@ pub mod breaker;
 pub mod config;
 pub mod error;
 pub mod observability;
+pub mod plugins;
 pub mod proxy;
 pub mod ratelimit;
 pub mod routing;
