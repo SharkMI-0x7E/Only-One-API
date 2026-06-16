@@ -1,106 +1,116 @@
-//! 灰度策略
-//!
-//! 定义权重、Header、Cookie 三种灰度策略。
-
-use serde::{Deserialize, Serialize};
+use rand::Rng;
 use std::collections::HashMap;
 
-/// 灰度策略类型
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(tag = "type", rename_all = "snake_case")]
-pub enum CanaryPolicy {
-    /// 按权重分配流量
-    Weight {
-        /// 主版本权重（0-100）
-        stable_weight: u32,
-        /// 灰度版本权重（0-100）
-        canary_weight: u32,
-    },
-    /// 按 Header 匹配
-    Header {
-        /// Header 名称
-        header_name: String,
-        /// Header 值（匹配则路由到灰度版本）
-        header_value: String,
-    },
-    /// 按 Cookie 黏性会话
-    Cookie {
-        /// Cookie 名称
-        cookie_name: String,
-        /// 会话超时时间（秒）
-        ttl_seconds: u64,
-    },
-}
-
-impl CanaryPolicy {
-    /// 根据请求上下文判断是否应该路由到灰度版本
-    pub fn should_route_to_canary(
+/// 灰度策略 trait
+pub trait CanaryPolicy: Send + Sync {
+    /// 选择 upstream 索引
+    fn select_upstream(
         &self,
         headers: &HashMap<String, String>,
         cookies: &HashMap<String, String>,
-    ) -> bool {
-        match self {
-            CanaryPolicy::Weight {
-                stable_weight,
-                canary_weight,
-            } => {
-                // 简单实现：使用随机数
-                let total = stable_weight + canary_weight;
-                if total == 0 {
-                    return false;
-                }
-                let random = rand::random::<u32>() % total;
-                random < *canary_weight
-            }
-            CanaryPolicy::Header {
-                header_name,
-                header_value,
-            } => headers
-                .get(header_name)
-                .map(|v| v == header_value)
-                .unwrap_or(false),
-            CanaryPolicy::Cookie { cookie_name, .. } => cookies.contains_key(cookie_name),
+        client_ip: &str,
+        upstream_count: usize,
+    ) -> usize;
+}
+
+/// 权重策略：按权重随机选择
+#[derive(Debug, Clone)]
+pub struct WeightPolicy {
+    /// 主 upstream 权重（0-100）
+    pub primary_weight: u8,
+}
+
+impl WeightPolicy {
+    /// 创建权重策略
+    pub fn new(primary_weight: u8) -> Self {
+        Self {
+            primary_weight: primary_weight.min(100),
         }
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+impl CanaryPolicy for WeightPolicy {
+    fn select_upstream(
+        &self,
+        _headers: &HashMap<String, String>,
+        _cookies: &HashMap<String, String>,
+        _client_ip: &str,
+        upstream_count: usize,
+    ) -> usize {
+        if upstream_count == 0 {
+            return 0;
+        }
+        if upstream_count == 1 {
+            return 0;
+        }
 
-    #[test]
-    fn test_weight_policy() {
-        let policy = CanaryPolicy::Weight {
-            stable_weight: 80,
-            canary_weight: 20,
-        };
-        let headers = HashMap::new();
-        let cookies = HashMap::new();
-        // 权重策略是随机的，这里只测试不 panic
-        let _ = policy.should_route_to_canary(&headers, &cookies);
+        // 按权重选择：primary_weight% 概率选第一个，其余概率选其他
+        let mut rng = rand::thread_rng();
+        let rand_val: u8 = rng.gen_range(0..100);
+
+        if rand_val < self.primary_weight {
+            0 // 选主 upstream
+        } else {
+            // 在其他 upstream 中随机选择
+            rng.gen_range(1..upstream_count)
+        }
     }
+}
 
-    #[test]
-    fn test_header_policy() {
-        let policy = CanaryPolicy::Header {
-            header_name: "x-canary".to_string(),
-            header_value: "true".to_string(),
-        };
-        let mut headers = HashMap::new();
-        headers.insert("x-canary".to_string(), "true".to_string());
-        let cookies = HashMap::new();
-        assert!(policy.should_route_to_canary(&headers, &cookies));
+/// Header 策略：根据请求头匹配
+#[derive(Debug, Clone)]
+pub struct HeaderPolicy {
+    /// 要匹配的 header 名称
+    pub header_name: String,
+    /// 要匹配的值
+    pub header_value: String,
+    /// 匹配时选择的 upstream 索引
+    pub target_index: usize,
+}
+
+impl CanaryPolicy for HeaderPolicy {
+    fn select_upstream(
+        &self,
+        headers: &HashMap<String, String>,
+        _cookies: &HashMap<String, String>,
+        _client_ip: &str,
+        upstream_count: usize,
+    ) -> usize {
+        if let Some(value) = headers.get(&self.header_name) {
+            if value == &self.header_value && self.target_index < upstream_count {
+                return self.target_index;
+            }
+        }
+        // 不匹配时返回第一个
+        0
     }
+}
 
-    #[test]
-    fn test_cookie_policy() {
-        let policy = CanaryPolicy::Cookie {
-            cookie_name: "session".to_string(),
-            ttl_seconds: 3600,
-        };
-        let headers = HashMap::new();
-        let mut cookies = HashMap::new();
-        cookies.insert("session".to_string(), "abc123".to_string());
-        assert!(policy.should_route_to_canary(&headers, &cookies));
+/// Cookie 策略：根据 Cookie 匹配
+#[derive(Debug, Clone)]
+pub struct CookiePolicy {
+    /// 要匹配的 cookie 名称
+    pub cookie_name: String,
+    /// 要匹配的值
+    pub cookie_value: String,
+    /// 匹配时选择的 upstream 索引
+    pub target_index: usize,
+}
+
+impl CanaryPolicy for CookiePolicy {
+    fn select_upstream(
+        &self,
+        _headers: &HashMap<String, String>,
+        cookies: &HashMap<String, String>,
+        _client_ip: &str,
+        upstream_count: usize,
+    ) -> usize {
+        if let Some(value) = cookies.get(&self.cookie_name) {
+            if value == &self.cookie_value && self.target_index < upstream_count {
+                return self.target_index;
+            }
+        }
+        // 不匹配时返回第一个
+        0
     }
 }

@@ -6,6 +6,7 @@
 pub mod audit;
 pub mod auth;
 pub mod breaker;
+pub mod canary;
 pub mod config;
 pub mod error;
 pub mod observability;
