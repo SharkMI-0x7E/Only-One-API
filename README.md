@@ -8,14 +8,6 @@
 Inspired by [songquanpeng/one-api](https://github.com/songquanpeng/one-api) — a "one-api" rewrite in Rust.
 灵感来自 [songquanpeng/one-api](https://github.com/songquanpeng/one-api) — 用 Rust 重写。
 
-## Status
-
-- [x] **Stage 1 — Foundation** (commit `d9086df`): 23 commits, 6/6 self-checks pass, 44/44 tests green
-- [ ] **Stage 2 — Hardening**: real LLM providers, full SSRF defense, metrics, config hot reload
-- [ ] **Stage 3 — Scale-out**: multi-instance, distributed rate limit, observability stack
-
-Full plan: [`docs/rapidgate-spec.md`](./docs/rapidgate-spec.md) · [stage-1 spec](.trae/specs/stage1-foundation/spec.md)
-
 ## AI-Assisted Development / AI 辅助开发
 
 This project is built through **AI collaboration** — not pure human, not pure AI. Two tools share the work, with the maintainer keeping final say:
