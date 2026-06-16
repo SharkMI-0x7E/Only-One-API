@@ -1,8 +1,10 @@
 //! core/ratelimit — 限流算法（spec §4.5）
 //!
 //! 阶段一实现：令牌桶 + 滑动窗口 + Moka 进程内存储
+//! 阶段三新增：Redis 分布式限流存储
 
 pub mod local_store;
+pub mod redis_store;
 pub mod sliding_window;
 pub mod token_bucket;
 
