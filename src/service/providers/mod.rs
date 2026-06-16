@@ -3,10 +3,10 @@
 //! 负责将不同 LLM Provider 的请求/响应格式转换为统一的内部格式。
 //! 阶段三新增（spec §2 [S3]）。
 
-pub mod openai;
 pub mod anthropic;
 pub mod gemini;
 pub mod local;
+pub mod openai;
 
 use async_trait::async_trait;
 use bytes::Bytes;

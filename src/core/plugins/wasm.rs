@@ -22,10 +22,7 @@ impl WasmPluginLoader {
     }
 
     /// 从 WASM 文件加载插件
-    pub fn load_from_wasm<P: AsRef<Path>>(
-        &self,
-        path: P,
-    ) -> Result<Arc<dyn Plugin>, PluginError> {
+    pub fn load_from_wasm<P: AsRef<Path>>(&self, path: P) -> Result<Arc<dyn Plugin>, PluginError> {
         let path = path.as_ref();
 
         if !path.exists() {

@@ -24,20 +24,18 @@ impl Provider for GeminiProvider {
         // OpenAI: { "model": "gpt-4", "messages": [...], "stream": true }
         // Gemini: { "contents": [{"parts": [{"text": "..."}]}], "generationConfig": {...} }
 
-        let messages = req.body.get("messages")
+        let messages = req
+            .body
+            .get("messages")
             .and_then(|m| m.as_array())
             .ok_or_else(|| CoreError::Internal("missing messages field".to_string()))?;
 
         // 转换 messages 到 Gemini contents 格式
         let mut contents = Vec::new();
         for msg in messages {
-            let role = msg.get("role")
-                .and_then(|r| r.as_str())
-                .unwrap_or("user");
+            let role = msg.get("role").and_then(|r| r.as_str()).unwrap_or("user");
 
-            let content = msg.get("content")
-                .and_then(|c| c.as_str())
-                .unwrap_or("");
+            let content = msg.get("content").and_then(|c| c.as_str()).unwrap_or("");
 
             // Gemini 使用 "user" 和 "model"（不是 "assistant"）
             let gemini_role = if role == "assistant" { "model" } else { "user" };
@@ -84,8 +82,7 @@ impl Provider for GeminiProvider {
             let mut openai_chunks = Vec::new();
 
             for line in body_str.lines() {
-                if line.starts_with("data: ") {
-                    let data = &line[6..];
+                if let Some(data) = line.strip_prefix("data: ") {
                     if let Ok(gemini_chunk) = serde_json::from_str::<Value>(data) {
                         // 转换 Gemini chunk 到 OpenAI chunk
                         if let Some(openai_chunk) = self.transform_streaming_chunk(&gemini_chunk) {
@@ -98,8 +95,9 @@ impl Provider for GeminiProvider {
             Ok(json!(openai_chunks))
         } else {
             // 非流式响应
-            let gemini_resp: Value = serde_json::from_slice(&resp.body)
-                .map_err(|e| CoreError::Internal(format!("failed to parse Gemini response: {e}")))?;
+            let gemini_resp: Value = serde_json::from_slice(&resp.body).map_err(|e| {
+                CoreError::Internal(format!("failed to parse Gemini response: {e}"))
+            })?;
 
             // 转换 Gemini 响应到 OpenAI 格式
             // Gemini: { "candidates": [{"content": {"parts": [{"text": "..."}]}}], "usageMetadata": {...} }

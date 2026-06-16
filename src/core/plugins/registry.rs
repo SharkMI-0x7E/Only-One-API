@@ -42,9 +42,9 @@ impl PluginRegistry {
     /// 注销插件
     pub async fn unregister(&self, name: &str) -> Result<(), PluginError> {
         let mut plugins = self.plugins.write().await;
-        plugins.remove(name).ok_or_else(|| {
-            PluginError::NotFound(format!("plugin '{}' not found", name))
-        })?;
+        plugins
+            .remove(name)
+            .ok_or_else(|| PluginError::NotFound(format!("plugin '{}' not found", name)))?;
         Ok(())
     }
 

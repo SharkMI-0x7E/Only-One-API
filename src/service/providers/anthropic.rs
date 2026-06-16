@@ -27,7 +27,7 @@ impl Provider for AnthropicProvider {
         let mut anthropic_req = req.body.clone();
 
         // 添加 max_tokens（Anthropic 必需）
-        if !anthropic_req.get("max_tokens").is_some() {
+        if anthropic_req.get("max_tokens").is_none() {
             anthropic_req["max_tokens"] = json!(4096);
         }
 
@@ -60,11 +60,11 @@ impl Provider for AnthropicProvider {
             let mut openai_chunks = Vec::new();
 
             for line in body_str.lines() {
-                if line.starts_with("data: ") {
-                    let data = &line[6..];
+                if let Some(data) = line.strip_prefix("data: ") {
                     if let Ok(anthropic_chunk) = serde_json::from_str::<Value>(data) {
                         // 转换 Anthropic chunk 到 OpenAI chunk
-                        if let Some(openai_chunk) = self.transform_streaming_chunk(&anthropic_chunk) {
+                        if let Some(openai_chunk) = self.transform_streaming_chunk(&anthropic_chunk)
+                        {
                             openai_chunks.push(openai_chunk);
                         }
                     }
@@ -74,8 +74,9 @@ impl Provider for AnthropicProvider {
             Ok(json!(openai_chunks))
         } else {
             // 非流式响应
-            let anthropic_resp: Value = serde_json::from_slice(&resp.body)
-                .map_err(|e| CoreError::Internal(format!("failed to parse Anthropic response: {e}")))?;
+            let anthropic_resp: Value = serde_json::from_slice(&resp.body).map_err(|e| {
+                CoreError::Internal(format!("failed to parse Anthropic response: {e}"))
+            })?;
 
             // 转换 Anthropic 响应到 OpenAI 格式
             // Anthropic: { "id": "...", "content": [{"type": "text", "text": "..."}], "usage": {...} }

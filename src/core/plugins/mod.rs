@@ -7,7 +7,7 @@ pub mod registry;
 pub mod r#trait;
 pub mod wasm;
 
-pub use registry::PluginRegistry;
 pub use r#trait::{
     ErrorContext, Plugin, PluginError, PluginMetadata, ProxyContext, RequestContext,
 };
+pub use registry::PluginRegistry;

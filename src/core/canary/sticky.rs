@@ -39,7 +39,13 @@ impl StickySession {
             .duration_since(UNIX_EPOCH)
             .unwrap_or(Duration::from_secs(0))
             .as_secs();
-        let input = format!("{}:{}:{}:{}", self.salt, client_ip, timestamp, rand::random::<u32>());
+        let input = format!(
+            "{}:{}:{}:{}",
+            self.salt,
+            client_ip,
+            timestamp,
+            rand::random::<u32>()
+        );
         let mut hasher = Sha256::new();
         hasher.update(input.as_bytes());
         format!("{:x}", hasher.finalize())[..16].to_string()
@@ -84,7 +90,7 @@ mod tests {
         let sticky = StickySession::new("session_id".to_string(), 3600);
         let mut cookies = HashMap::new();
         cookies.insert("session_id".to_string(), "abc123".to_string());
-        
+
         let session_id = sticky.extract_session_id(&cookies);
         assert_eq!(session_id, Some("abc123".to_string()));
     }
@@ -93,12 +99,12 @@ mod tests {
     fn test_select_upstream_consistency() {
         let sticky = StickySession::new("session_id".to_string(), 3600);
         let session_id = "test_session_123";
-        
+
         // 同一 session_id 应该总是选择相同的 upstream
         let idx1 = sticky.select_upstream(session_id, 3);
         let idx2 = sticky.select_upstream(session_id, 3);
         let idx3 = sticky.select_upstream(session_id, 3);
-        
+
         assert_eq!(idx1, idx2);
         assert_eq!(idx2, idx3);
         assert!(idx1 < 3);
@@ -109,7 +115,7 @@ mod tests {
         let sticky = StickySession::new("session_id".to_string(), 3600);
         let session1 = sticky.generate_session_id("192.168.1.1");
         let session2 = sticky.generate_session_id("192.168.1.1");
-        
+
         // 由于包含时间戳和随机数，两次生成的 session_id 应该不同
         assert_ne!(session1, session2);
         assert_eq!(session1.len(), 16);

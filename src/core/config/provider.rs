@@ -7,9 +7,10 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 
 /// Provider 类型枚举
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ProviderKind {
+    #[default]
     OpenAI,
     Anthropic,
     Gemini,
@@ -24,12 +25,6 @@ impl fmt::Display for ProviderKind {
             ProviderKind::Gemini => write!(f, "gemini"),
             ProviderKind::Local => write!(f, "local"),
         }
-    }
-}
-
-impl Default for ProviderKind {
-    fn default() -> Self {
-        ProviderKind::OpenAI
     }
 }
 
