@@ -74,7 +74,7 @@ prometheus = "0.14"          # Prometheus 指标导出
 tracing-opentelemetry = "0.28"  # OpenTelemetry tracing
 opentelemetry = { version = "0.27", features = ["trace", "metrics"] }  # OpenTelemetry SDK
 opentelemetry-otlp = { version = "0.27", features = ["grpc-tonic"] }  # OTLP 导出
-opentelemetry_sdk = { version = "0.27", features = ["trace", "metrics"] }  # OpenTelemetry SDK
+opentelemetry_sdk = { version = "0.27", features = ["trace", "metrics", "rt-tokio"] }  # OpenTelemetry SDK
 # etcd-client = "0.12"         # ETCD 配置中心 - 暂时移除，需要 protoc
 wasmtime = "19.0"            # WASM 插件沙箱
 async-graphql = "7.0"        # GraphQL（admin API）

@@ -1,7 +1,12 @@
 //! core/observability — 可观测性抽象（spec §4.6）
 //!
-//! 阶段一只落地 `TraceId`；W3C tracecontext 完整实现与 prometheus/OTel 留 [S2] / [S3]。
+//! 阶段一：TraceId
+//! 阶段三：Prometheus 指标 + OpenTelemetry 导出
 
+pub mod metrics;
+pub mod otel;
 pub mod trace;
 
+pub use metrics::Metrics;
+pub use otel::{OtelConfig, OtelError, OtelInitializer};
 pub use trace::{TraceContext, TraceId};
