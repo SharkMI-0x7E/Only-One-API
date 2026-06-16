@@ -68,6 +68,7 @@ jsonwebtoken = "9.3"         # JWT 认证
 serde_with = "3.7"           # 审计日志结构化
 
 # 阶段三新增（spec §3.3）
+rand = "0.8"                 # 随机数生成（灰度策略）
 redis = { version = "0.27", features = ["tokio-comp", "connection-manager", "cluster"] }  # 分布式限流
 prometheus = "0.14"          # Prometheus 指标导出
 tracing-opentelemetry = "0.28"  # OpenTelemetry tracing
