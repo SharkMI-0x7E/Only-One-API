@@ -4,6 +4,8 @@
 //! - `GET /admin/upstreams` — upstream configs (api_key redacted)
 //! - `GET /admin/limits`    — rate limiter status
 //! - `GET /admin/config`    — gateway config dump (sensitive fields redacted)
+//!
+//! All admin operations emit structured audit logs via `tracing::info!`.
 
 use std::sync::Arc;
 
@@ -35,6 +37,8 @@ pub fn admin_routes(state: Arc<AppState>) -> Router {
 /// Each entry contains the route name, HTTP method, and path.
 async fn get_routes(State(state): State<Arc<AppState>>) -> Response {
     let table = state.route_table.snapshot();
+    let route_count = table.routes.len();
+
     let routes: Vec<serde_json::Value> = table
         .routes
         .iter()
@@ -48,6 +52,12 @@ async fn get_routes(State(state): State<Arc<AppState>>) -> Response {
         })
         .collect();
 
+    tracing::info!(
+        endpoint = "routes",
+        route_count = route_count,
+        "admin API: list routes"
+    );
+
     json_response(StatusCode::OK, json!({ "routes": routes }))
 }
 
@@ -55,6 +65,8 @@ async fn get_routes(State(state): State<Arc<AppState>>) -> Response {
 ///
 /// The `api_key` field is always redacted.
 async fn get_upstreams(State(state): State<Arc<AppState>>) -> Response {
+    let upstream_count = state.upstream_configs.len();
+
     let upstreams: Vec<serde_json::Value> = state
         .upstream_configs
         .iter()
@@ -70,6 +82,12 @@ async fn get_upstreams(State(state): State<Arc<AppState>>) -> Response {
         })
         .collect();
 
+    tracing::info!(
+        endpoint = "upstreams",
+        upstream_count = upstream_count,
+        "admin API: list upstreams"
+    );
+
     json_response(StatusCode::OK, json!({ "upstreams": upstreams }))
 }
 
@@ -79,6 +97,12 @@ async fn get_upstreams(State(state): State<Arc<AppState>>) -> Response {
 async fn get_limits(State(state): State<Arc<AppState>>) -> Response {
     let entry_count = state.limiters.entry_count();
     let default_limit = &state.default_rate_limit;
+
+    tracing::info!(
+        endpoint = "limits",
+        active_limiters = entry_count,
+        "admin API: list rate limiters"
+    );
 
     json_response(
         StatusCode::OK,
@@ -107,6 +131,13 @@ async fn get_config(State(state): State<Arc<AppState>>) -> Response {
             "burst": state.default_rate_limit.burst,
         },
     });
+
+    tracing::info!(
+        endpoint = "config",
+        upstream_count = state.upstream_configs.len(),
+        route_count = state.route_table.snapshot().len(),
+        "admin API: dump config"
+    );
 
     json_response(StatusCode::OK, config)
 }
