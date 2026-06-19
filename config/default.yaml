@@ -22,4 +22,17 @@ defaults:
     failure_threshold: 5
     open_duration_ms: 30000
 
+# Example upstream configuration (uncomment and fill in to use):
+# upstreams:
+#   - id: "openai-main"
+#     provider: "openai"
+#     base_url: "https://api.openai.com/v1"
+#     api_key: "${RGD_OPENAI_API_KEY}"
+#     timeout_ms: 30000           # Per-upstream timeout (overrides global)
+#     pool:
+#       idle_timeout_secs: 120    # Connection idle timeout
+#       max_idle_per_host: 20     # Max idle connections per host
+#     models:
+#       - "gpt-4"
+#       - "gpt-3.5-turbo"
 upstreams: []
