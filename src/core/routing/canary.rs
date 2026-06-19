@@ -99,6 +99,8 @@ mod tests {
                 api_key: "test-key".to_string(),
                 load_balancer: Default::default(),
                 models: vec![],
+                timeout_ms: None,
+                pool: None,
             },
             UpstreamConfig {
                 id: "canary".to_string(),
@@ -107,6 +109,8 @@ mod tests {
                 api_key: "test-key".to_string(),
                 load_balancer: Default::default(),
                 models: vec![],
+                timeout_ms: None,
+                pool: None,
             },
         ];
 

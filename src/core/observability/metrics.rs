@@ -103,12 +103,7 @@ impl Metrics {
     }
 
     /// 记录上游请求
-    pub fn record_upstream_request(
-        &self,
-        upstream: &str,
-        status: u16,
-        duration_secs: f64,
-    ) {
+    pub fn record_upstream_request(&self, upstream: &str, status: u16, duration_secs: f64) {
         let status_str = status.to_string();
         self.upstream_requests_total
             .with_label_values(&[upstream, &status_str])
@@ -124,12 +119,7 @@ impl Metrics {
     }
 
     /// 记录熔断器状态变化
-    pub fn record_breaker_change(
-        &self,
-        upstream: &str,
-        from_state: &str,
-        to_state: &str,
-    ) {
+    pub fn record_breaker_change(&self, upstream: &str, from_state: &str, to_state: &str) {
         self.breaker_state_changes
             .with_label_values(&[upstream, from_state, to_state])
             .inc();

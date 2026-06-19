@@ -1,6 +1,7 @@
-//! service/upstream_pool — reqwest::Client 池 + SSRF 完整实现（spec §5 + §8）
+//! service/upstream_pool — reqwest::Client pool + SSRF implementation (spec §5 + §8)
 //!
-//! 阶段二增强：DNS 解析 + IP 段检查 + 连接池调参
+//! Stage 2 enhancements: DNS resolution + IP range checking + per-upstream timeout
+//! and configurable connection pool parameters.
 
 use std::net::{IpAddr, ToSocketAddrs};
 use std::sync::Arc;
@@ -10,24 +11,35 @@ use crate::core::config::upstream::UpstreamConfig;
 use crate::core::error::CoreError;
 use crate::service::state::UpstreamCache;
 
+/// Default pool idle timeout in seconds
+const DEFAULT_POOL_IDLE_TIMEOUT_SECS: u64 = 90;
+
+/// Default max idle connections per host
+const DEFAULT_POOL_MAX_IDLE_PER_HOST: usize = 10;
+
+/// Default TCP keepalive in seconds
+const DEFAULT_TCP_KEEPALIVE_SECS: u64 = 60;
+
+/// Upstream connection pool with SSRF protection
 pub struct UpstreamPool {
     cache: UpstreamCache,
     allowlist: Arc<Vec<String>>,
-    request_timeout: Duration,
+    default_request_timeout: Duration,
     max_body_bytes: usize,
 }
 
 impl UpstreamPool {
+    /// Create a new upstream pool
     pub fn new(allowlist: Vec<String>, request_timeout_ms: u64, max_body_bytes: usize) -> Self {
         Self {
             cache: UpstreamCache::builder().max_capacity(1024).build(),
             allowlist: Arc::new(allowlist),
-            request_timeout: Duration::from_millis(request_timeout_ms),
+            default_request_timeout: Duration::from_millis(request_timeout_ms),
             max_body_bytes,
         }
     }
 
-    /// 检查 base_url 是否在 allowlist
+    /// Check if base_url is in the allowlist
     pub fn check_allowlist(&self, base_url: &str) -> Result<(), CoreError> {
         let host = base_url
             .split("://")
@@ -44,7 +56,7 @@ impl UpstreamPool {
         }
     }
 
-    /// SSRF 完整检查：DNS 解析 + IP 段检查
+    /// Full SSRF check: DNS resolution + IP range check
     pub fn check_ssrf(&self, base_url: &str) -> Result<(), CoreError> {
         self.check_allowlist(base_url)?;
 
@@ -54,7 +66,7 @@ impl UpstreamPool {
             .and_then(|s| s.split('/').next())
             .ok_or_else(|| CoreError::BadRequest(format!("invalid base_url: {base_url}")))?;
 
-        // DNS 解析
+        // DNS resolution
         let addr_str = if host.contains(':') {
             host.to_string()
         } else {
@@ -82,31 +94,68 @@ impl UpstreamPool {
         Ok(())
     }
 
-    /// 拿到（或构造并缓存）该 upstream 对应的 reqwest::Client
+    /// Get (or create and cache) the reqwest::Client for the given upstream
     pub async fn client_for(&self, up: &UpstreamConfig) -> Result<Arc<reqwest::Client>, CoreError> {
         self.check_ssrf(&up.base_url)?;
         if let Some(c) = self.cache.get(&up.id).await {
             return Ok(c);
         }
+
+        // Use per-upstream timeout if specified, otherwise fall back to global default
+        let timeout = up
+            .timeout_ms
+            .map(Duration::from_millis)
+            .unwrap_or(self.default_request_timeout);
+
+        // Use per-upstream pool config if specified, otherwise use defaults
+        let pool_config = up.pool.as_ref();
+        let idle_timeout = pool_config
+            .map(|p| Duration::from_secs(p.idle_timeout_secs))
+            .unwrap_or(Duration::from_secs(DEFAULT_POOL_IDLE_TIMEOUT_SECS));
+        let max_idle_per_host = pool_config
+            .map(|p| p.max_idle_per_host)
+            .unwrap_or(DEFAULT_POOL_MAX_IDLE_PER_HOST);
+
         let client = reqwest::Client::builder()
-            .timeout(self.request_timeout)
-            .pool_idle_timeout(Duration::from_secs(90))
-            .pool_max_idle_per_host(10)
-            .tcp_keepalive(Duration::from_secs(60))
+            .timeout(timeout)
+            .pool_idle_timeout(idle_timeout)
+            .pool_max_idle_per_host(max_idle_per_host)
+            .tcp_keepalive(Duration::from_secs(DEFAULT_TCP_KEEPALIVE_SECS))
             .user_agent(concat!("rapidgate/", env!("CARGO_PKG_VERSION")))
             .build()
             .map_err(|e| CoreError::UpstreamUnreachable(format!("client build: {e}")))?;
+
         let arc = Arc::new(client);
         self.cache.insert(up.id.clone(), arc.clone()).await;
         Ok(arc)
     }
 
+    /// Get the maximum allowed request body size
     pub fn max_body_bytes(&self) -> usize {
         self.max_body_bytes
     }
+
+    /// Remove a cached client for the given upstream ID
+    pub async fn remove(&self, upstream_id: &str) {
+        self.cache.remove(upstream_id).await;
+    }
+
+    /// Perform a health check on an upstream by sending a HEAD request to its base_url
+    pub async fn health_check(&self, up: &UpstreamConfig) -> Result<(), CoreError> {
+        let client = self.client_for(up).await?;
+        let health_url = format!("{}/health", up.base_url.trim_end_matches('/'));
+
+        client
+            .head(&health_url)
+            .send()
+            .await
+            .map_err(|e| CoreError::UpstreamUnreachable(format!("health check failed: {e}")))?;
+
+        Ok(())
+    }
 }
 
-/// 检查 IP 是否在私有/回环/链路本地段
+/// Check if IP is in private/loopback/link-local ranges
 fn is_blocked_ip(ip: IpAddr) -> bool {
     match ip {
         IpAddr::V4(v4) => {

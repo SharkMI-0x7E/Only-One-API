@@ -11,6 +11,7 @@ pub mod config;
 pub mod error;
 pub mod observability;
 pub mod plugins;
+pub mod provider;
 pub mod proxy;
 pub mod ratelimit;
 pub mod routing;
