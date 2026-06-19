@@ -2,6 +2,7 @@
 
 pub mod apikey;
 pub mod jwt;
+pub mod oauth2;
 
 use async_trait::async_trait;
 

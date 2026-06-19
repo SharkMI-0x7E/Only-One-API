@@ -2,3 +2,4 @@
 
 pub mod stream;
 pub mod transformer;
+pub mod ws;
