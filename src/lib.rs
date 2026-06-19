@@ -7,3 +7,15 @@
 
 pub mod core;
 pub mod service;
+
+// 重新导出核心公共 API，供 CLI / 插件复用
+pub use crate::core::config::{
+    AuthConfig, GatewayConfig, LoadBalancer, LoggingConfig, MatchRule, ProviderConfig,
+    ProviderKind, RateLimitConfig, RouteConfig, UpstreamAllowlist, UpstreamConfig, UpstreamId,
+    UpstreamPoolConfig,
+};
+pub use crate::core::error::CoreError;
+pub use crate::core::routing::{RouteTable, Router};
+pub use crate::service::config_loader::{ConfigPaths, LoadedConfig};
+pub use crate::service::error::ServiceError;
+pub use crate::service::state::AppState;
