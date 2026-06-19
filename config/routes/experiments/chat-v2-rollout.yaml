@@ -1,0 +1,155 @@
+# 灰度实验：Chat v2 渐进式发布
+# 阶段三新增（spec §2 [S3]）
+#
+# 实验目标：将 chat/completions 流量从 v1（纯 OpenAI）逐步迁移到 v2（多 Provider）
+# 实验周期：2026-06-19 ~ 2026-07-03（暂定两周）
+# 负责人：通过 git blame 追溯
+
+experiment:
+  id: "chat-v2-rollout"
+  description: "Chat v2 多 Provider 灰度发布实验"
+  enabled: true
+  start_time: "2026-06-19T00:00:00+08:00"
+  end_time: "2026-07-03T23:59:59+08:00"
+
+# ─────────────────────────────────────────────
+# 实验组定义
+# ─────────────────────────────────────────────
+groups:
+  # 对照组：继续走 v1 OpenAI 单通道
+  - id: "control"
+    description: "对照组 — v1 OpenAI"
+    upstream_id: "openai-primary"
+    weight: 0
+
+  # 实验组 A：OpenAI（v2 上游）
+  - id: "exp-openai"
+    description: "实验组 A — OpenAI v2 上游"
+    upstream_id: "openai-v2"
+    weight: 0
+
+  # 实验组 B：Anthropic Claude
+  - id: "exp-anthropic"
+    description: "实验组 B — Anthropic Claude"
+    upstream_id: "anthropic-v2"
+    weight: 0
+
+  # 实验组 C：Google Gemini
+  - id: "exp-gemini"
+    description: "实验组 C — Google Gemini"
+    upstream_id: "gemini-v2"
+    weight: 0
+
+  # 实验组 D：本地模型
+  - id: "exp-local"
+    description: "实验组 D — 本地模型"
+    upstream_id: "local-v2"
+    weight: 0
+
+# ─────────────────────────────────────────────
+# 分流策略（三选一，按优先级生效）
+# ─────────────────────────────────────────────
+routing:
+  # 策略 1：按权重随机分流（默认）
+  # 所有请求按 weight 比例随机分配到各组
+  - strategy: "weight"
+    enabled: true
+    distribution:
+      - group: "control"
+        weight: 70
+      - group: "exp-openai"
+        weight: 10
+      - group: "exp-anthropic"
+        weight: 10
+      - group: "exp-gemini"
+        weight: 5
+      - group: "exp-local"
+        weight: 5
+
+  # 策略 2：按请求 Header 分流
+  # 携带 X-Experiment-Group: exp-anthropic 的请求进入指定组
+  - strategy: "header"
+    enabled: false
+    header_name: "X-Experiment-Group"
+    mapping:
+      "exp-openai": "exp-openai"
+      "exp-anthropic": "exp-anthropic"
+      "exp-gemini": "exp-gemini"
+      "exp-local": "exp-local"
+
+  # 策略 3：按 Cookie 分流
+  # 携带 experiment_group=exp-anthropic Cookie 的请求进入指定组
+  - strategy: "cookie"
+    enabled: false
+    cookie_name: "experiment_group"
+    mapping:
+      "exp-openai": "exp-openai"
+      "exp-anthropic": "exp-anthropic"
+      "exp-gemini": "exp-gemini"
+      "exp-local": "exp-local"
+
+# ─────────────────────────────────────────────
+# 观测指标与自动回滚条件
+# ─────────────────────────────────────────────
+metrics:
+  # 核心指标：错误率超过阈值时自动回滚到对照组
+  rollback:
+    - metric: "error_rate"
+      threshold: 0.05          # 错误率 > 5%
+      window_secs: 300         # 5 分钟滑动窗口
+      action: "rollback"       # 回滚到对照组
+
+    - metric: "p99_latency_ms"
+      threshold: 30000         # P99 延迟 > 30s
+      window_secs: 300
+      action: "rollback"
+
+  # 采集指标（用于实验分析，不触发回滚）
+  collect:
+    - "request_count"
+    - "success_rate"
+    - "p50_latency_ms"
+    - "p95_latency_ms"
+    - "p99_latency_ms"
+    - "upstream_timeout_count"
+    - "token_usage_total"
+
+# ─────────────────────────────────────────────
+# 阶段性推进计划（手动触发）
+# ─────────────────────────────────────────────
+phases:
+  - phase: 1
+    description: "小流量验证 — 实验组合计 10%"
+    distribution:
+      control: 90
+      exp-openai: 4
+      exp-anthropic: 3
+      exp-gemini: 2
+      exp-local: 1
+
+  - phase: 2
+    description: "扩大灰度 — 实验组合计 30%"
+    distribution:
+      control: 70
+      exp-openai: 10
+      exp-anthropic: 10
+      exp-gemini: 5
+      exp-local: 5
+
+  - phase: 3
+    description: "大规模灰度 — 实验组合计 60%"
+    distribution:
+      control: 40
+      exp-openai: 20
+      exp-anthropic: 20
+      exp-gemini: 10
+      exp-local: 10
+
+  - phase: 4
+    description: "全量发布 — 实验组合计 100%"
+    distribution:
+      control: 0
+      exp-openai: 35
+      exp-anthropic: 30
+      exp-gemini: 20
+      exp-local: 15

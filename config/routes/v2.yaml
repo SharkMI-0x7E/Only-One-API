@@ -1,0 +1,157 @@
+# v2 路由配置 — 向后兼容 v1，同时支持多 Provider 与灰度路由
+# 阶段三新增（spec §2 [S3]）
+
+# ─────────────────────────────────────────────
+# 上游定义：每个 Provider 独立声明
+# ─────────────────────────────────────────────
+upstreams:
+  # OpenAI
+  - id: "openai-v2"
+    provider: "openai"
+    base_url: "${RGD_OPENAI_BASE_URL}"
+    api_key: "${RGD_OPENAI_API_KEY}"
+    timeout_ms: 60000
+    max_retries: 3
+    models:
+      - "gpt-4o"
+      - "gpt-4o-mini"
+      - "gpt-4-turbo"
+
+  # Anthropic
+  - id: "anthropic-v2"
+    provider: "anthropic"
+    base_url: "${RGD_ANTHROPIC_BASE_URL}"
+    api_key: "${RGD_ANTHROPIC_API_KEY}"
+    timeout_ms: 60000
+    max_retries: 3
+    models:
+      - "claude-3-opus-20240229"
+      - "claude-3-sonnet-20240229"
+      - "claude-3-haiku-20240307"
+
+  # Gemini
+  - id: "gemini-v2"
+    provider: "gemini"
+    base_url: "${RGD_GEMINI_BASE_URL}"
+    api_key: "${RGD_GEMINI_API_KEY}"
+    timeout_ms: 60000
+    max_retries: 3
+    models:
+      - "gemini-pro"
+      - "gemini-pro-vision"
+
+  # 本地模型（Ollama / vLLM / LocalAI）
+  - id: "local-v2"
+    provider: "local"
+    base_url: "${RGD_LOCAL_BASE_URL}"
+    api_key: "${RGD_LOCAL_API_KEY}"
+    timeout_ms: 120000
+    max_retries: 1
+    models:
+      - "llama2"
+      - "codellama"
+      - "mistral"
+
+# ─────────────────────────────────────────────
+# 路由规则
+# ─────────────────────────────────────────────
+routes:
+  # ---- Chat Completions（多 Provider 聚合） ----
+  - name: "v2-chat-completions"
+    match:
+      method: POST
+      path: "/v2/chat/completions"
+    # 灰度路由：按权重将流量分配到不同 Provider
+    canary:
+      strategy: "weight"
+      targets:
+        - upstream_id: "openai-v2"
+          weight: 60
+        - upstream_id: "anthropic-v2"
+          weight: 25
+        - upstream_id: "gemini-v2"
+          weight: 10
+        - upstream_id: "local-v2"
+          weight: 5
+    auth:
+      type: "bearer"
+    rate_limit:
+      algorithm: "token_bucket"
+      rps: 10
+      burst: 20
+
+  # ---- Chat Completions（按 Header 分流） ----
+  # 请求携带 X-Provider: anthropic 时路由到 Anthropic
+  - name: "v2-chat-header-routing"
+    match:
+      method: POST
+      path: "/v2/chat/completions"
+      headers:
+        x-provider: "anthropic"
+    upstream:
+      id: "anthropic-v2"
+    auth:
+      type: "bearer"
+
+  # ---- Chat Completions（按 Cookie 分流） ----
+  # 请求携带 Cookie 中 provider_group=beta 时路由到灰度组
+  - name: "v2-chat-cookie-routing"
+    match:
+      method: POST
+      path: "/v2/chat/completions"
+      cookies:
+        provider_group: "beta"
+    canary:
+      strategy: "weight"
+      targets:
+        - upstream_id: "anthropic-v2"
+          weight: 50
+        - upstream_id: "gemini-v2"
+          weight: 50
+    auth:
+      type: "bearer"
+
+  # ---- Embeddings ----
+  - name: "v2-embeddings"
+    match:
+      method: POST
+      path: "/v2/embeddings"
+    upstream:
+      id: "openai-v2"
+    auth:
+      type: "bearer"
+
+  # ---- Models 列表 ----
+  - name: "v2-models"
+    match:
+      method: GET
+      path: "/v2/models"
+    # 聚合所有 Provider 的模型列表
+    upstream:
+      id: "openai-v2"
+    auth:
+      type: "bearer"
+
+  # ---- 向后兼容：v1 路径透传 ----
+  # v1 路径继续可用，内部转发到 v1 路由配置处理
+  - name: "v2-compat-v1-chat"
+    match:
+      method: POST
+      path: "/v1/chat/completions"
+    upstream:
+      id: "openai-v2"
+    auth:
+      type: "bearer"
+    rate_limit:
+      algorithm: "token_bucket"
+      rps: 5
+      burst: 10
+
+  - name: "v2-compat-v1-embeddings"
+    match:
+      method: POST
+      path: "/v1/embeddings"
+    upstream:
+      id: "openai-v2"
+    auth:
+      type: "bearer"
