@@ -1,5 +1,7 @@
 //! service 模块 — axum + tokio + 文件 I/O 集成层
 
+pub mod admin;
+pub mod config_center;
 pub mod config_loader;
 pub mod error;
 pub mod handler;
