@@ -1,0 +1,112 @@
+# RapidGate Prometheus 告警规则
+# 用途：当关键指标异常时触发告警，通知 oncall 介入
+# 部署：放入 Prometheus rule_files 目录，配合 Alertmanager 路由分发告警
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rapidgate-prometheus-alerts
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: rapidgate
+    app.kubernetes.io/component: observability
+data:
+  rapidgate-alerts.yaml: |
+    groups:
+      - name: rapidgate.critical
+        rules:
+          # 5xx 错误率 > 1% 持续 5 分钟 → Critical
+          - alert: RapidGateHighErrorRate
+            expr: |
+              (
+                sum(rate(http_requests_total{status=~"5.."}[5m]))
+                /
+                sum(rate(http_requests_total[5m]))
+              ) > 0.01
+            for: 5m
+            labels:
+              severity: critical
+              team: gateway
+            annotations:
+              summary: "RapidGate 5xx 错误率超过 1%"
+              description: |
+                过去 5 分钟内，RapidGate 全局 5xx 错误率为 {{ $value | humanizePercentage }}，
+                超过阈值 1%。请立即排查上游 Provider 状态与路由配置。
+              runbook_url: "https://github.com/SharkMI-0x7E/RapidGate/blob/main/docs/OPERATIONS.md#high-error-rate"
+
+          # P99 延迟 > 1s 持续 5 分钟 → Warning（升级为 Critical 需人工判断）
+          - alert: RapidGateHighLatencyP99
+            expr: |
+              histogram_quantile(0.99, sum by (le) (rate(http_request_duration_seconds_bucket[5m]))) > 1
+            for: 5m
+            labels:
+              severity: warning
+              team: gateway
+            annotations:
+              summary: "RapidGate P99 延迟超过 1 秒"
+              description: |
+                过去 5 分钟内，RapidGate 全局 P99 延迟为 {{ $value | humanizeDuration }}，
+                超过阈值 1s。请检查上游 Provider 响应时间或网络状况。
+              runbook_url: "https://github.com/SharkMI-0x7E/RapidGate/blob/main/docs/OPERATIONS.md#high-latency"
+
+          # 熔断器 open 状态持续 2 分钟 → Warning
+          - alert: RapidGateCircuitBreakerOpen
+            expr: circuit_breaker_state{state="open"} == 1
+            for: 2m
+            labels:
+              severity: warning
+              team: gateway
+            annotations:
+              summary: "RapidGate 上游熔断器已打开"
+              description: |
+                上游 {{ $labels.upstream }} 的熔断器已持续打开 2 分钟，
+                表示该 Provider 持续不可用。请检查 Provider 状态或切换备用上游。
+
+          # 实例不可达（up == 0 持续 1 分钟）→ Critical
+          - alert: RapidGateInstanceDown
+            expr: up{job="rapidgate"} == 0
+            for: 1m
+            labels:
+              severity: critical
+              team: gateway
+            annotations:
+              summary: "RapidGate 实例不可达"
+              description: |
+                Prometheus 无法抓取 RapidGate 实例 {{ $labels.instance }} 的 /metrics，
+                持续 1 分钟。请检查进程状态与网络连通性。
+
+          # 内存使用率 > 85% 持续 5 分钟 → Warning
+          - alert: RapidGateHighMemoryUsage
+            expr: |
+              process_resident_memory_bytes{job="rapidgate"}
+              /
+              container_memory_limit_bytes > 0.85
+            for: 5m
+            labels:
+              severity: warning
+              team: gateway
+            annotations:
+              summary: "RapidGate 内存使用率超过 85%"
+              description: |
+                实例 {{ $labels.instance }} 内存使用率 {{ $value | humanizePercentage }}，
+                接近容器限制，存在 OOM 风险。
+
+      - name: rapidgate.warning
+        rules:
+          # 4xx 错误率 > 10% 持续 5 分钟 → Info（多为客户端问题）
+          - alert: RapidGateHighClientErrorRate
+            expr: |
+              (
+                sum(rate(http_requests_total{status=~"4.."}[5m]))
+                /
+                sum(rate(http_requests_total[5m]))
+              ) > 0.1
+            for: 5m
+            labels:
+              severity: info
+              team: gateway
+            annotations:
+              summary: "RapidGate 4xx 错误率超过 10%"
+              description: |
+                过去 5 分钟内，RapidGate 全局 4xx 错误率为 {{ $value | humanizePercentage }}，
+                多为客户端请求问题，建议检查 API Key 分发与客户端配置。

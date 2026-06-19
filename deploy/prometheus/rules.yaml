@@ -1,0 +1,90 @@
+# RapidGate Prometheus 记录规则
+# 用途：预计算常用聚合指标，降低查询成本
+# 部署：放入 Prometheus rule_files 目录，由 Prometheus 定期加载
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rapidgate-prometheus-rules
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: rapidgate
+    app.kubernetes.io/component: observability
+data:
+  rapidgate-rules.yaml: |
+    groups:
+      # 请求速率与状态码分布
+      - name: rapidgate.request_rate
+        interval: 30s
+        rules:
+          # 每秒请求数（全局）
+          - record: rapidgate:http_requests:rate5m
+            expr: sum(rate(http_requests_total[5m]))
+            labels:
+              aggregation: global
+
+          # 按路由分组的每秒请求数
+          - record: rapidgate:http_requests:rate5m:by_route
+            expr: sum by (route) (rate(http_requests_total[5m]))
+
+          # 按状态码分组的每秒请求数
+          - record: rapidgate:http_requests:rate5m:by_status
+            expr: sum by (status) (rate(http_requests_total[5m]))
+
+          # 按上游 Provider 分组的每秒请求数
+          - record: rapidgate:http_requests:rate5m:by_provider
+            expr: sum by (provider) (rate(http_requests_total[5m]))
+
+      # 延迟分布
+      - name: rapidgate.latency
+        interval: 30s
+        rules:
+          # 全局 P50 / P90 / P99 延迟（毫秒）
+          - record: rapidgate:http_latency:quantile5m
+            expr: histogram_quantile(0.5, sum by (le) (rate(http_request_duration_seconds_bucket[5m]))) * 1000
+            labels:
+              quantile: p50
+
+          - record: rapidgate:http_latency:quantile5m
+            expr: histogram_quantile(0.9, sum by (le) (rate(http_request_duration_seconds_bucket[5m]))) * 1000
+            labels:
+              quantile: p90
+
+          - record: rapidgate:http_latency:quantile5m
+            expr: histogram_quantile(0.99, sum by (le) (rate(http_request_duration_seconds_bucket[5m]))) * 1000
+            labels:
+              quantile: p99
+
+      # 错误率
+      - name: rapidgate.errors
+        interval: 30s
+        rules:
+          # 全局 5xx 错误率（0~1）
+          - record: rapidgate:http_5xx_ratio:rate5m
+            expr: |
+              sum(rate(http_requests_total{status=~"5.."}[5m]))
+              /
+              sum(rate(http_requests_total[5m]))
+
+          # 按路由分组的 5xx 错误率
+          - record: rapidgate:http_5xx_ratio:rate5m:by_route
+            expr: |
+              sum by (route) (rate(http_requests_total{status=~"5.."}[5m]))
+              /
+              sum by (route) (rate(http_requests_total[5m]))
+
+      # 熔断器状态
+      - name: rapidgate.circuit_breaker
+        interval: 30s
+        rules:
+          # 处于 open 状态的熔断器数量
+          - record: rapidgate:breaker_open:count
+            expr: sum(circuit_breaker_state{state="open"})
+
+      # Token 用量
+      - name: rapidgate.tokens
+        interval: 60s
+        rules:
+          # 每分钟 token 消耗总量（按 provider + model）
+          - record: rapidgate:tokens:rate1m
+            expr: sum by (provider, model, token_type) (rate(tokens_used_total[1m]))

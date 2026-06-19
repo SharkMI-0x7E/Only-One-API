@@ -1,0 +1,60 @@
+# RapidGate 开发环境 docker-compose
+# 用途：本地一键拉起网关 + 依赖（Redis）+ 示例配置
+# 启动：docker compose -f deploy/docker/docker-compose.yaml up --build
+
+version: "3.9"
+
+services:
+  # 分布式限流后端（stage-3 引入）
+  redis:
+    image: redis:7-alpine
+    container_name: rapidgate-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # RapidGate 网关
+  rapidgate:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile
+    image: rapidgate:dev
+    container_name: rapidgate-gateway
+    # 开发环境不设置 restart:always，避免配置错误时反复崩溃
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    environment:
+      # 日志级别
+      RUST_LOG: info
+      # 配置目录（容器内默认 /etc/rapidgate，这里显式声明便于覆盖）
+      RGD_CONFIG_DIR: /etc/rapidgate
+      # 示例 API Key（仅用于本地联调，禁止进入生产镜像）
+      RGD_OPENAI_API_KEY: ${RGD_OPENAI_API_KEY:-sk-local-dev-only}
+      RGD_ANTHROPIC_API_KEY: ${RGD_ANTHROPIC_API_KEY:-}
+      RGD_GEMINI_API_KEY: ${RGD_GEMINI_API_KEY:-}
+      # Redis 连接串
+      RGD_REDIS_URL: redis://redis:6379
+    volumes:
+      # 挂载本地配置目录，修改后重启容器即可生效
+      - ../../config:/etc/rapidgate:ro
+    healthcheck:
+      # distroless 无 curl，使用 /bin/sh 不存在，改用 tcp 探测
+      test: ["CMD-SHELL", "echo > /dev/tcp/127.0.0.1/8080 || exit 1"]
+      interval: 15s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+
+volumes:
+  redis-data:

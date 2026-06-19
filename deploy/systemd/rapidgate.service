@@ -1,0 +1,56 @@
+[Unit]
+Description=RapidGate - High-performance unified LLM API gateway
+Documentation=https://github.com/SharkMI-0x7E/RapidGate
+After=network-online.target redis.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=rapidgate
+Group=rapidgate
+
+# 二进制与配置路径（按实际部署调整）
+ExecStart=/usr/local/bin/rapidgate
+WorkingDirectory=/etc/rapidgate
+
+# 环境变量
+EnvironmentFile=-/etc/default/rapidgate
+Environment="RUST_LOG=info"
+Environment="RGD_CONFIG_DIR=/etc/rapidgate"
+
+# 重启策略：异常退出后延迟 5 秒重启，避免雪崩
+Restart=on-failure
+RestartSec=5
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+# 优雅停机：SIGTERM 后等待 15 秒（与 gateway.shutdown_timeout_ms 对齐）
+TimeoutStopSec=15
+KillSignal=SIGTERM
+SendSIGKILL=no
+
+# 安全加固
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+MemoryDenyWriteExecute=yes
+LockPersonality=yes
+ReadWritePaths=/var/log/rapidgate /tmp
+
+# 资源限制
+LimitNOFILE=65535
+LimitNPROC=4096
+
+# 日志
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=rapidgate
+
+[Install]
+WantedBy=multi-user.target

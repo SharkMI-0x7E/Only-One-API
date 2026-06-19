@@ -1,0 +1,56 @@
+# RapidGate Kubernetes Horizontal Pod Autoscaler
+# 适用版本：autoscaling/v2（Kubernetes 1.28+）
+# 基于 CPU 利用率与自定义 RPS 指标扩容
+
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: rapidgate
+  namespace: rapidgate
+  labels:
+    app.kubernetes.io/name: rapidgate
+    app.kubernetes.io/component: gateway
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: rapidgate
+  minReplicas: 2
+  maxReplicas: 20
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 30
+      policies:
+        - type: Pods
+          value: 2
+          periodSeconds: 60
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 120
+  metrics:
+    # CPU 利用率
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+    # 内存利用率
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 75
+    # 自定义指标：每秒请求数（需 Prometheus Adapter 支持）
+    # 若未部署 Prometheus Adapter，可注释此段
+    - type: Pods
+      pods:
+        metric:
+          name: http_requests_per_second
+        target:
+          type: AverageValue
+          averageValue: "500"

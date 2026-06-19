@@ -1,0 +1,39 @@
+# RapidGate Kubernetes Ingress
+# 适用版本：Kubernetes 1.28+（networking.k8s.io/v1）
+# 默认使用 nginx-ingress-controller，可按需替换 ingressClassName
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: rapidgate
+  namespace: rapidgate
+  labels:
+    app.kubernetes.io/name: rapidgate
+    app.kubernetes.io/component: gateway
+  annotations:
+    # nginx-ingress 推荐配置：长连接 + 大请求体（LLM 请求常见数十 MB）
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "10"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "120"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "120"
+    nginx.ingress.kubernetes.io/client-max-body-size: "50m"
+    # 启用 HTTP/2 与 gzip（SSE 流式响应下 gzip 收益有限，可按需关闭）
+    nginx.ingress.kubernetes.io/use-http2: "true"
+    nginx.ingress.kubernetes.io/enable-cors: "true"
+spec:
+  ingressClassName: nginx
+  # 若需 TLS，取消下方注释并配置对应 Secret
+  # tls:
+  #   - hosts:
+  #       - api.example.com
+  #     secretName: rapidgate-tls
+  rules:
+    - host: api.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: rapidgate
+                port:
+                  name: http

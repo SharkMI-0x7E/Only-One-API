@@ -1,0 +1,116 @@
+# RapidGate Kubernetes Deployment
+# 适用版本：Kubernetes 1.28+
+# 部署：kubectl apply -f deploy/k8s/
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rapidgate
+  namespace: rapidgate
+  labels:
+    app.kubernetes.io/name: rapidgate
+    app.kubernetes.io/component: gateway
+    app.kubernetes.io/part-of: rapidgate-platform
+spec:
+  # 副本数由 HPA 动态调整，这里仅设初始值
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: rapidgate
+      app.kubernetes.io/component: gateway
+  # 滚动更新策略：保证零停机
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: rapidgate
+        app.kubernetes.io/component: gateway
+      annotations:
+        # Prometheus 抓取约定
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/metrics"
+    spec:
+      # 优雅终止宽限期，与 gateway.shutdown_timeout_ms 对齐
+      terminationGracePeriodSeconds: 20
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        fsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: rapidgate
+          image: rapidgate:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          env:
+            - name: RUST_LOG
+              value: "info"
+            - name: RGD_CONFIG_DIR
+              value: "/etc/rapidgate"
+            # 敏感字段从 Secret 注入
+            - name: RGD_REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: rapidgate-secrets
+                  key: redis-url
+                  optional: true
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "64Mi"
+            limits:
+              cpu: "2000m"
+              memory: "512Mi"
+          # 启动探针：避免慢启动被误杀
+          startupProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 2
+            periodSeconds: 2
+            failureThreshold: 15
+          # 存活探针
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+          # 就绪探针：决定流量是否切入
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 2
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: config
+              mountPath: /etc/rapidgate
+              readOnly: true
+            # 临时目录（tracing / 临时文件）
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: config
+          configMap:
+            name: rapidgate-config
+        - name: tmp
+          emptyDir: {}
