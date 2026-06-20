@@ -64,8 +64,10 @@ impl Provider for GeminiProvider {
         if let Some(max_tokens) = req.body.get("max_tokens") {
             generation_config["maxOutputTokens"] = max_tokens.clone();
         }
-        if !generation_config.as_object().unwrap().is_empty() {
-            gemini_req["generationConfig"] = generation_config;
+        if let Some(obj) = generation_config.as_object() {
+            if !obj.is_empty() {
+                gemini_req["generationConfig"] = generation_config;
+            }
         }
 
         Ok(gemini_req)
@@ -136,9 +138,15 @@ impl Provider for GeminiProvider {
     }
 
     fn api_path(&self) -> &str {
-        // Gemini API 路径包含模型名称
-        // 实际使用时需要动态构建：/v1beta/models/{model}:generateContent
+        // Gemini API 路径需要动态构建：/v1beta/models/{model}:generateContent
+        // 但 trait 要求返回 &str，所以这里返回默认值，实际使用时通过 build_url 覆盖
         "/v1beta/models/gemini-pro:generateContent"
+    }
+
+    fn build_url(&self, req: &ProviderRequest) -> Result<String, CoreError> {
+        let base = req.base_url.trim_end_matches('/');
+        let model = &req.model;
+        Ok(format!("{}/v1beta/models/{}:generateContent", base, model))
     }
 }
 
