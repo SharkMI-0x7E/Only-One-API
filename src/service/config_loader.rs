@@ -116,7 +116,7 @@ fn collect_routes(dir: &Path) -> Result<Vec<String>, CoreError> {
 }
 
 /// 展开 `${VAR}` 占位符；缺失则报错
-fn expand_placeholders(input: &str) -> Result<String, CoreError> {
+pub(crate) fn expand_placeholders(input: &str) -> Result<String, CoreError> {
     let mut out = String::with_capacity(input.len());
     let bytes = input.as_bytes();
     let mut i = 0;
@@ -139,7 +139,7 @@ fn expand_placeholders(input: &str) -> Result<String, CoreError> {
 }
 
 /// spec §7 校验 R-1~R-8
-fn validate(cfg: &LoadedConfig) -> Result<(), CoreError> {
+pub(crate) fn validate(cfg: &LoadedConfig) -> Result<(), CoreError> {
     // R-1：serde_yaml 已经解析过
     // R-2：expand_placeholders 已经处理
     // R-3：upstream.base_url 在 allowlist
