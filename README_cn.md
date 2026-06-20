@@ -6,13 +6,17 @@
 
 灵感来自 [songquanpeng/one-api](https://github.com/songquanpeng/one-api) — 用 Rust 重写。
 
-## 项目状态
+## 关于
 
-- [x] **Stage 1 — 基础落地**（commit `d9086df`）：23 个 commit，6/6 自检全过，44/44 测试通过
-- [x] **Stage 2 — 强化**（commit `7428e24`）：性能优化、安全加固、测试覆盖、可观测性完善
-- [x] **Stage 3 — 规模化**（commit `74f6e53`）：多 Provider 支持、插件系统、灰度发布、分布式限流、Admin API、部署配置
+RapidGate 是一个统一 LLM API 网关，目标是让你用一套接口对接 OpenAI、Anthropic、Gemini、本地模型等多种 LLM 服务，同时获得限流、灰度、熔断、插件扩展等生产级能力。
 
-完整规划：[`docs/rapidgate-spec.md`](./docs/rapidgate-spec.md)
+项目目前处于**早期阶段**。核心骨架已搭建完成，多 Provider 适配、插件系统、灰度发布、分布式限流等模块已落地，但部分功能（如 Provider 转发层的真实串联、WASM 插件沙箱的完整实现）仍在推进中。这意味着 API 接口、配置格式、内部架构都可能在后续迭代中发生变化 — 如果你打算在生产环境使用，建议锁定版本并关注变更日志。
+
+## 团队
+
+本项目由 **1 名人类开发者 + 多个 AI 智能体** 协作完成。人类负责架构决策、审批规范、跑所有 `cargo` 命令；AI 智能体负责代码编写、测试覆盖和 commit 卫生。开发过程使用 [Trae SOLO](https://www.trae.ai/) 和 [opencode](https://github.com/opencode-ai/opencode) 协同。
+
+这种"一人 + 多 AI"的模式让我们能以极小的团队快速迭代，但也意味着项目节奏和传统开源项目不同 — 你会看到大量细粒度的 commit（一个功能一个 commit），以及严格的 spec 驱动开发流程。
 
 ## 特性
 
@@ -25,10 +29,6 @@
 - **插件系统**: 支持 Native 与 WASM 插件扩展
 - **高可用**: 熔断器、限流、优雅关闭
 - **分布式**: Redis 限流、ETCD/Consul 配置中心
-
-## AI 辅助开发
-
-本项目采用 **AI 协作**模式完成，使用 [Trae SOLO](https://www.trae.ai/) 和 [opencode](https://github.com/opencode-ai/opencode) 辅助开发。维护者（[SharkMI](https://github.com/SharkMI-0x7E)）负责架构设计、审批每个 spec、**亲自跑所有 `cargo` 命令** — AI 负责敲代码与写 commit。提交节奏为「一个功能 = 一个 commit」（见 `AGENTS.md §1.1` 与 `§8.6`）。
 
 ## 快速开始
 

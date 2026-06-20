@@ -6,13 +6,17 @@
 
 Inspired by [songquanpeng/one-api](https://github.com/songquanpeng/one-api) — rewritten in Rust.
 
-## Project Status
+## About
 
-- [x] **Stage 1 — Foundation** (commit `d9086df`): 23 commits, 6/6 checks passed, 44/44 tests passed
-- [x] **Stage 2 — Hardening** (commit `7428e24`): Performance optimization, security hardening, test coverage, observability
-- [x] **Stage 3 — Scaling** (commit `74f6e53`): Multi-provider support, plugin system, canary release, distributed rate limiting, admin API, deployment configs
+RapidGate is a unified LLM API gateway that lets you connect to OpenAI, Anthropic, Gemini, local models, and more through a single interface — while gaining production-grade capabilities like rate limiting, canary releases, circuit breaking, and plugin extensibility.
 
-Full roadmap: [`docs/rapidgate-spec.md`](./docs/rapidgate-spec.md)
+The project is in its **early stages**. The core skeleton is complete, with multi-provider adapters, plugin system, canary release, and distributed rate limiting already in place. However, some features (such as real end-to-end provider forwarding and full WASM plugin sandbox) are still works in progress. This means APIs, config formats, and internal architecture may change in future iterations — if you plan to use it in production, pin your version and watch the changelog.
+
+## Team
+
+This project is built by **1 human developer + multiple AI agents**. The human handles architecture decisions, approves specs, and runs all `cargo` commands; the AI agents handle code writing, test coverage, and commit hygiene. Development is coordinated using [Trae SOLO](https://www.trae.ai/) and [opencode](https://github.com/opencode-ai/opencode).
+
+This "one human + many AI" model lets us iterate fast with a minimal team, but it also means the project rhythm differs from traditional open source — you'll see a lot of fine-grained commits (one feature per commit) and a strict spec-driven development workflow.
 
 ## Features
 
@@ -25,10 +29,6 @@ Full roadmap: [`docs/rapidgate-spec.md`](./docs/rapidgate-spec.md)
 - **Plugin System**: Extensible with native and WASM plugins
 - **High Availability**: Circuit breaker, rate limiting, graceful shutdown
 - **Distributed**: Redis rate limiting, ETCD/Consul config center
-
-## AI-Assisted Development
-
-This project is developed using AI collaboration with [Trae SOLO](https://www.trae.ai/) and [opencode](https://github.com/opencode-ai/opencode). The maintainer ([SharkMI](https://github.com/SharkMI-0x7E)) handles architecture design, approves every spec, and **runs all `cargo` commands personally** — AI handles code writing and commits. Commit rhythm follows "one feature = one commit" (see `AGENTS.md §1.1` and `§8.6`).
 
 ## Quick Start
 
