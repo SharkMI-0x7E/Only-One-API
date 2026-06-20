@@ -128,13 +128,6 @@ deploy/        # 部署配置（Docker / K8s / systemd / Prometheus）
 scripts/       # 运维脚本
 ```
 
-## 文档
-
-- [架构文档](docs/ARCHITECTURE.md) - 系统架构与设计决策
-- [运维手册](docs/OPERATIONS.md) - 部署、监控与故障排查
-- [项目规格](docs/rapidgate-spec.md) - 完整技术规格
-- [协作规范](AGENTS.md) - 开发者与 AI 协作规范
-
 ## 许可证
 
 [Apache-2.0](./Cargo.toml)

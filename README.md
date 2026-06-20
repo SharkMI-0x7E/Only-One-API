@@ -128,13 +128,6 @@ deploy/        # Deployment configs (Docker / K8s / systemd / Prometheus)
 scripts/       # Operations scripts
 ```
 
-## Documentation
-
-- [Architecture](docs/ARCHITECTURE.md) - System architecture and design decisions
-- [Operations Manual](docs/OPERATIONS.md) - Deployment, monitoring, and troubleshooting
-- [Project Spec](docs/rapidgate-spec.md) - Complete technical specification
-- [Collaboration Guide](AGENTS.md) - Developer and AI collaboration guidelines
-
 ## License
 
 [Apache-2.0](./Cargo.toml)
