@@ -103,7 +103,10 @@ impl ConfigCenter for ConsulConfigCenter {
         })?;
 
         if entries.is_empty() {
-            return Err(CoreError::Config(format!("Consul key not found: {}", full_key)));
+            return Err(CoreError::Config(format!(
+                "Consul key not found: {}",
+                full_key
+            )));
         }
 
         // Decode base64 value
@@ -130,6 +133,7 @@ impl ConfigCenter for ConsulConfigCenter {
 
 /// Consul KV entry structure (partial, for JSON parsing)
 #[derive(Debug, serde::Deserialize)]
+#[allow(dead_code)]
 struct ConsulKVEntry {
     #[serde(rename = "Key")]
     key: String,
@@ -144,7 +148,8 @@ impl ConsulKVEntry {
     fn decode_value(&self) -> Result<String, String> {
         match &self.value {
             Some(v) => {
-                let decoded = base64_decode(v).map_err(|e| format!("base64 decode failed: {}", e))?;
+                let decoded =
+                    base64_decode(v).map_err(|e| format!("base64 decode failed: {}", e))?;
                 String::from_utf8(decoded).map_err(|e| format!("UTF-8 decode failed: {}", e))
             }
             None => Ok(String::new()),
@@ -154,7 +159,8 @@ impl ConsulKVEntry {
 
 /// Simple base64 decoder (standard alphabet)
 fn base64_decode(input: &str) -> Result<Vec<u8>, String> {
-    const DECODE_TABLE: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    const DECODE_TABLE: &[u8; 64] =
+        b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
     let input = input.trim_end_matches('=');
     let mut output = Vec::with_capacity(input.len() * 3 / 4);
@@ -163,7 +169,9 @@ fn base64_decode(input: &str) -> Result<Vec<u8>, String> {
     let mut bits_collected = 0;
 
     for c in input.chars() {
-        let digit = DECODE_TABLE.iter().position(|&d| d as char == c)
+        let digit = DECODE_TABLE
+            .iter()
+            .position(|&d| d as char == c)
             .ok_or_else(|| format!("invalid base64 character: {}", c))? as u32;
 
         buffer = (buffer << 6) | digit;
